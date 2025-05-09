@@ -139,7 +139,8 @@ async function bootstrap() {
     'http://localhost:19006',
     'http://127.0.0.1:3000',
     'http://10.0.2.2:3000',
-    'https://medical-api-t14f.onrender.com',
+    // 'https://medical-api-t14f.onrender.com',
+    'https://medical-render-api.onrender.com',
     'https://votre-domaine-frontend.com', // Remplacez par le domaine de votre frontend
   ];
 
