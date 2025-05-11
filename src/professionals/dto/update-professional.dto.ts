@@ -173,7 +173,6 @@ class AvailabilitiesValidator implements ValidatorConstraintInterface {
     return 'Les disponibilités doivent être un objet valide avec la structure type -> jour -> [{ hour: 8-18, minute: 0-59 }]';
   }
 }
-
 @ValidatorConstraint({ name: 'consultationPrices', async: false })
 class ConsultationPricesValidator implements ValidatorConstraintInterface {
   validate(value: any, args: ValidationArguments) {
@@ -185,15 +184,27 @@ class ConsultationPricesValidator implements ValidatorConstraintInterface {
       const price = value[type];
       if (typeof price !== 'string') return false;
       
-      // Vérifie que le prix est au format "X FCFA"
-      const priceRegex = /^\d+\s*FCFA$/;
-      if (!priceRegex.test(price)) return false;
+      // Extrait uniquement le nombre du prix
+      const numberStr = price.replace(/\s*FCFA$/, '').trim();
+      
+      // Vérifie que c'est un nombre valide
+      if (!/^\d+$/.test(numberStr)) {
+        console.log(`Prix invalide: "${price}" -> nombre extrait: "${numberStr}"`);
+        return false;
+      }
+
+      // Vérifie que le prix est dans une plage raisonnable (optionnel)
+      const number = parseInt(numberStr, 10);
+      if (number < 100 || number > 1000000) {
+        console.log(`Prix hors limites: ${number} FCFA`);
+        return false;
+      }
     }
     return true;
   }
 
   defaultMessage(args: ValidationArguments) {
-    return 'Les prix de consultation doivent être au format "X FCFA"';
+    return 'Les prix de consultation doivent être des nombres entiers suivis de "FCFA" (exemple: "5000 FCFA")';
   }
 }
 

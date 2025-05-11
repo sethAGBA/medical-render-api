@@ -446,7 +446,12 @@ export class UsersService {
     const { fullName, profilePhoto, phoneNumber, address, specialty, about, location, availabilities, consultationPrices } = updateProfessionalDto;
 
     // Update User entity
-    const userUpdate: Partial<User> = { fullName, profilePhoto, phoneNumber, address };
+    const userUpdate: Partial<User> = { 
+      fullName, 
+      profilePhoto, 
+      phoneNumber, 
+      address: address ?? undefined 
+    };
     Object.assign(user, userUpdate);
     await this.usersRepository.save(user);
 
