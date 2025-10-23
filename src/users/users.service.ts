@@ -346,13 +346,17 @@
 //src/users/users.service.ts
 
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from './entities/user.entity/user.entity';
 import { Professional } from '../professionals/entities/professional.entity/professional.entity';
+import { Appointment } from '../appointments/entities/appointment.entity/appointment.entity';
+import { Review } from './entities/review.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfessionalDto } from '../professionals/dto/update-professional.dto';
+import { CreateReviewDto } from './dto/create-review.dto';
+import { UpdateReviewDto } from './dto/update-review.dto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
@@ -366,6 +370,10 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(Professional)
     private professionalRepository: Repository<Professional>,
+    @InjectRepository(Appointment)
+    private appointmentRepository: Repository<Appointment>,
+    @InjectRepository(Review)
+    private reviewRepository: Repository<Review>,
     private configService: ConfigService,
   ) {
     this.uploadDir = path.join(process.cwd(), 'Uploads', 'profiles');
@@ -393,6 +401,7 @@ export class UsersService {
       throw new NotFoundException('Utilisateur non trouvé');
     }
     if (user.role === 'professional' && user.professional) {
+      const ratingSummary = await this.getProfessionalRatingSummary(id);
       return {
         ...user,
         specialty: user.professional.specialty,
@@ -400,6 +409,8 @@ export class UsersService {
         location: user.professional.location,
         availabilities: user.professional.availabilities,
         consultationPrices: user.professional.consultationPrices,
+        averageRating: ratingSummary.average,
+        reviewsCount: ratingSummary.count,
       };
     }
     return user;
@@ -467,6 +478,7 @@ export class UsersService {
     }
 
     // Return combined data
+    const ratingSummary = await this.getProfessionalRatingSummary(id);
     return {
       ...user,
       specialty: professional?.specialty,
@@ -474,6 +486,205 @@ export class UsersService {
       location: professional?.location,
       availabilities: professional?.availabilities,
       consultationPrices: professional?.consultationPrices,
+      averageRating: ratingSummary.average,
+      reviewsCount: ratingSummary.count,
+    };
+  }
+
+  async getReviewsForProfessional(professionalId: string) {
+    await this.ensureProfessionalExists(professionalId);
+    const reviews = await this.reviewRepository.find({
+      where: { professionalId },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
+    return reviews.map((review) =>
+      this.mapReviewToResponse(review, review.user),
+    );
+  }
+
+  async createReview(
+    professionalId: string,
+    userId: string,
+    dto: CreateReviewDto,
+  ) {
+    if (professionalId === userId) {
+      throw new BadRequestException(
+        'Vous ne pouvez pas laisser un avis sur votre propre profil.',
+      );
+    }
+
+    const professional = await this.ensureProfessionalExists(professionalId);
+    const patient = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+    if (!patient) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    const hasAppointment = await this.appointmentRepository.count({
+      where: {
+        professionalId,
+        userId,
+        status: In(['booked', 'completed']),
+      },
+    });
+    if (hasAppointment === 0) {
+      throw new BadRequestException(
+        'Vous devez avoir un rendez-vous confirmé avec ce professionnel pour laisser un avis.',
+      );
+    }
+
+    let review = await this.reviewRepository.findOne({
+      where: { professionalId, userId },
+    });
+
+    if (review) {
+      review.comment = dto.comment;
+      review.rating = dto.rating;
+    } else {
+      review = this.reviewRepository.create({
+        professionalId,
+        userId,
+        comment: dto.comment,
+        rating: dto.rating,
+      });
+    }
+
+    const saved = await this.reviewRepository.save(review);
+    const savedWithUser = await this.reviewRepository.findOne({
+      where: { id: saved.id },
+      relations: ['user'],
+    });
+
+    const response = this.mapReviewToResponse(
+      savedWithUser ?? saved,
+      savedWithUser?.user ?? patient,
+    );
+
+    const ratingSummary = await this.getProfessionalRatingSummary(
+      professionalId,
+    );
+
+    return {
+      review: response,
+      averageRating: ratingSummary.average,
+      reviewsCount: ratingSummary.count,
+      professionalName: professional.fullName,
+    };
+  }
+
+  async updateReview(
+    professionalId: string,
+    reviewId: string,
+    userId: string,
+    dto: UpdateReviewDto,
+    isAdmin = false,
+  ) {
+    await this.ensureProfessionalExists(professionalId);
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId, professionalId },
+      relations: ['user'],
+    });
+    if (!review) {
+      throw new NotFoundException('Avis introuvable');
+    }
+    if (review.userId !== userId && !isAdmin) {
+      throw new ForbiddenException(
+        'Vous ne pouvez modifier que vos propres avis.',
+      );
+    }
+    if (dto.comment !== undefined) {
+      review.comment = dto.comment;
+    }
+    if (dto.rating !== undefined) {
+      review.rating = dto.rating;
+    }
+    const saved = await this.reviewRepository.save(review);
+    const ratingSummary = await this.getProfessionalRatingSummary(
+      professionalId,
+    );
+    return {
+      review: this.mapReviewToResponse(saved, review.user),
+      averageRating: ratingSummary.average,
+      reviewsCount: ratingSummary.count,
+    };
+  }
+
+  async deleteReview(
+    professionalId: string,
+    reviewId: string,
+    userId: string,
+    isAdmin = false,
+  ) {
+    await this.ensureProfessionalExists(professionalId);
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId, professionalId },
+    });
+    if (!review) {
+      throw new NotFoundException('Avis introuvable');
+    }
+    if (review.userId !== userId && !isAdmin) {
+      throw new ForbiddenException(
+        'Vous ne pouvez supprimer que vos propres avis.',
+      );
+    }
+    await this.reviewRepository.delete(review.id);
+    const ratingSummary = await this.getProfessionalRatingSummary(
+      professionalId,
+    );
+    return {
+      averageRating: ratingSummary.average,
+      reviewsCount: ratingSummary.count,
+    };
+  }
+
+  private async ensureProfessionalExists(professionalId: string): Promise<User> {
+    const professional = await this.usersRepository.findOne({
+      where: { id: professionalId },
+    });
+    if (!professional || professional.role !== 'professional') {
+      throw new NotFoundException('Professionnel introuvable');
+    }
+    return professional;
+  }
+
+  private async getProfessionalRatingSummary(professionalId: string) {
+    const query = this.reviewRepository
+      .createQueryBuilder('review')
+      .select('AVG(review.rating)', 'avg')
+      .addSelect('COUNT(review.id)', 'count')
+      .where('review.professionalId = :professionalId', { professionalId });
+
+    const result = await query.getRawOne<{ avg: string | null; count: string }>();
+    const count = result?.count ? parseInt(result.count, 10) : 0;
+    const avg =
+      result?.avg && count > 0 ? parseFloat(result.avg) : null;
+
+    return {
+      average: avg !== null ? Number(avg.toFixed(1)) : null,
+      count,
+    };
+  }
+
+  private mapReviewToResponse(review: Review, author?: User | null) {
+    const ratingNumber =
+      typeof review.rating === 'string'
+        ? parseFloat(review.rating)
+        : Number(review.rating);
+    const userName = author?.fullName ?? author?.email ?? null;
+    return {
+      id: review.id,
+      professionalId: review.professionalId,
+      userId: review.userId,
+      comment: review.comment,
+      text: review.comment,
+      rating: Number.isNaN(ratingNumber) ? null : ratingNumber,
+      fullName: author?.fullName ?? null,
+      user: userName,
+      email: author?.email ?? null,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
     };
   }
 

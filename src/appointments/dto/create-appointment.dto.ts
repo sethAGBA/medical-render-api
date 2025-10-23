@@ -1,16 +1,38 @@
 // src/appointments/dto/create-appointment.dto.ts
-import { IsNotEmpty, IsDateString, IsUUID } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+} from 'class-validator';
 
 export class CreateAppointmentDto {
-  @IsDateString()
-  @IsNotEmpty()
-  date: Date;
-
   @IsUUID()
   @IsNotEmpty()
-  userId: string; // ID de l'utilisateur
+  professionalId: string;
 
-  @IsUUID()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  date: string;
+
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  time: string;
+
+  @IsString()
   @IsNotEmpty()
-  professionalId: string; // ID du professionnel
+  subject: string;
+
+  @IsString()
+  @IsNotEmpty()
+  type: string;
+
+  @IsOptional()
+  @IsString()
+  price?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

@@ -286,6 +286,9 @@ import { UpdateProfessionalDto } from '../professionals/dto/update-professional.
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { AppointmentsService } from '../appointments/appointments.service';
+import { CreateReviewDto } from './dto/create-review.dto';
+import { UpdateReviewDto } from './dto/update-review.dto';
 
 // Interface pour la requête authentifiée
 interface RequestWithUser extends ExpressRequest {
@@ -298,7 +301,10 @@ interface RequestWithUser extends ExpressRequest {
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly appointmentsService: AppointmentsService,
+  ) {}
 
   // Endpoints pour tous les utilisateurs
   @Get('me')
@@ -358,6 +364,95 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   async deleteProfilePhoto(@Request() req: RequestWithUser): Promise<void> {
     await this.usersService.deleteProfilePhoto(req.user.id);
+  }
+
+  @Get(':id/appointments')
+  @UseGuards(JwtAuthGuard)
+  getAppointmentsForProfessional(
+    @Param('id') professionalId: string,
+    @Request() req: RequestWithUser,
+  ) {
+    return this.appointmentsService.getAppointmentsForProfessional(
+      professionalId,
+      req.user,
+    );
+  }
+
+  @Get(':id/appointments-as-patient')
+  @UseGuards(JwtAuthGuard)
+  getAppointmentsAsPatient(
+    @Param('id') userId: string,
+    @Request() req: RequestWithUser,
+  ) {
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+      throw new ForbiddenException(
+        'Vous ne pouvez consulter que vos propres rendez-vous.',
+      );
+    }
+    return this.appointmentsService.getAppointmentsForPatient(userId);
+  }
+
+  @Get(':id/appointments-as-professional')
+  @UseGuards(JwtAuthGuard)
+  getAppointmentsAsProfessional(
+    @Param('id') userId: string,
+    @Request() req: RequestWithUser,
+  ) {
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+      throw new ForbiddenException(
+        'Vous ne pouvez consulter que vos propres rendez-vous professionnels.',
+      );
+    }
+    return this.appointmentsService.getAppointmentsForProfessionalAsOwner(
+      userId,
+    );
+  }
+
+  @Get(':id/reviews')
+  getReviews(@Param('id') professionalId: string) {
+    return this.usersService.getReviewsForProfessional(professionalId);
+  }
+
+  @Post(':id/reviews')
+  @UseGuards(JwtAuthGuard)
+  createReview(
+    @Param('id') professionalId: string,
+    @Body() dto: CreateReviewDto,
+    @Request() req: RequestWithUser,
+  ) {
+    return this.usersService.createReview(professionalId, req.user.id, dto);
+  }
+
+  @Patch(':id/reviews/:reviewId')
+  @UseGuards(JwtAuthGuard)
+  updateReview(
+    @Param('id') professionalId: string,
+    @Param('reviewId') reviewId: string,
+    @Body() dto: UpdateReviewDto,
+    @Request() req: RequestWithUser,
+  ) {
+    return this.usersService.updateReview(
+      professionalId,
+      reviewId,
+      req.user.id,
+      dto,
+      req.user.role === 'admin',
+    );
+  }
+
+  @Delete(':id/reviews/:reviewId')
+  @UseGuards(JwtAuthGuard)
+  deleteReview(
+    @Param('id') professionalId: string,
+    @Param('reviewId') reviewId: string,
+    @Request() req: RequestWithUser,
+  ) {
+    return this.usersService.deleteReview(
+      professionalId,
+      reviewId,
+      req.user.id,
+      req.user.role === 'admin',
+    );
   }
 
   // Endpoints réservés aux administrateurs

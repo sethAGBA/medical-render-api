@@ -44,12 +44,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { User } from './entities/user.entity/user.entity';
 import { Professional } from '../professionals/entities/professional.entity/professional.entity';
+import { Appointment } from '../appointments/entities/appointment.entity/appointment.entity';
+import { Review } from './entities/review.entity';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
+import { AppointmentsModule } from '../appointments/appointments.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Professional]),
+    TypeOrmModule.forFeature([User, Professional, Appointment, Review]),
+    AppointmentsModule,
     MulterModule.register({
       dest: './Uploads',
     }),

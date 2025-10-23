@@ -24,9 +24,8 @@
 
 
 // src/professionals/entities/professional.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { User } from '../../../users/entities/user.entity/user.entity';
-import { Appointment } from '../../../appointments/entities/appointment.entity/appointment.entity';
 
 @Entity()
 export class Professional {
@@ -78,9 +77,6 @@ export class Professional {
 
   @Column()
   userId: string;
-
-  @OneToMany(() => Appointment, (appointment) => appointment.professional)
-  appointments: Appointment[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,27 +1,70 @@
 // src/appointments/entities/appointment.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from '../../../users/entities/user.entity/user.entity'; // Importez l'entité User
-import { Professional } from '../../../professionals/entities/professional.entity/professional.entity'; // Importez l'entité Professional
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { User } from '../../../users/entities/user.entity/user.entity';
+
+export type AppointmentStatus = 'available' | 'booked' | 'cancelled' | 'completed';
 
 @Entity()
 export class Appointment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'timestamp', nullable: true })
-  date: Date | null; // Date et heure du rendez-vous
+  @Column({ type: 'date' })
+  date: string;
 
-  @ManyToOne(() => User, (user) => user.appointments) // Relation Many-to-One avec User
-  @JoinColumn({ name: 'userId' }) // Nom de la colonne de jointure
-  user: User; // Référence à l'utilisateur (patient)
+  @Column({ type: 'time' })
+  time: string;
+
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  subject: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  type: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  price: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: ['available', 'booked', 'cancelled', 'completed'],
+    default: 'booked',
+  })
+  status: AppointmentStatus;
+
+  @Column({ type: 'text', nullable: true })
+  notes: string | null;
+
+  @ManyToOne(() => User, (user) => user.patientAppointments, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'userId' })
+  patient: User | null;
 
   @Column({ type: 'uuid', nullable: true })
-  userId: string | null; // ID de l'utilisateur (patient)
+  userId: string | null;
 
-  @ManyToOne(() => Professional, (professional) => professional.appointments) // Relation Many-to-One avec Professional
-  @JoinColumn({ name: 'professionalId' }) // Nom de la colonne de jointure
-  professional: Professional; // Référence au professionnel de santé
+  @ManyToOne(() => User, (user) => user.professionalAppointments, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'professionalId' })
+  professional: User;
 
-  @Column({ type: 'uuid', nullable: true })
-  professionalId: string | null; // ID du professionnel de santé
+  @Column({ type: 'uuid' })
+  professionalId: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

@@ -195,6 +195,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany } from 'typ
 import { Professional } from '../../../professionals/entities/professional.entity/professional.entity';
 import { Appointment } from '../../../appointments/entities/appointment.entity/appointment.entity';
 import { Message } from '../../../chat/entities/message.entity/message.entity';
+import { Review } from '../review.entity';
 
 @Entity()
 export class User {
@@ -258,8 +259,17 @@ export class User {
   @OneToOne(() => Professional, (professional) => professional.user)
   professional: Professional;
 
-  @OneToMany(() => Appointment, (appointment) => appointment.user)
-  appointments: Appointment[];
+  @OneToMany(() => Appointment, (appointment) => appointment.patient)
+  patientAppointments: Appointment[];
+
+  @OneToMany(() => Appointment, (appointment) => appointment.professional)
+  professionalAppointments: Appointment[];
+
+  @OneToMany(() => Review, (review) => review.user)
+  writtenReviews: Review[];
+
+  @OneToMany(() => Review, (review) => review.professional)
+  receivedReviews: Review[];
 
   @OneToMany(() => Message, (message) => message.sender)
   sentMessages: Message[];
