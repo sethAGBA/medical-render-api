@@ -738,13 +738,20 @@ export class UsersService {
       return;
     }
 
+    const fileName = photoUrl.split('/').pop();
+    if (!fileName) {
+      return;
+    }
+
+    const filePath = path.join(this.uploadDir, fileName);
+
     try {
-      const fileName = photoUrl.split('/').pop();
-      if (fileName) {
-        const filePath = path.join(this.uploadDir, fileName);
-        await fs.unlink(filePath);
-      }
+      await fs.unlink(filePath);
     } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError?.code === 'ENOENT') {
+        return;
+      }
       console.error('Erreur lors de la suppression du fichier:', error);
     }
   }

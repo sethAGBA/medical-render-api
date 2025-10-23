@@ -17,13 +17,13 @@ export class ProfessionalsService {
   ) {}
 
   async findAll(): Promise<Professional[]> {
-    return this.professionalRepository.find({ relations: ['user', 'appointments'] });
+    return this.professionalRepository.find({ relations: ['user'] });
   }
 
   async findOne(id: string): Promise<Professional> {
     const professional = await this.professionalRepository.findOne({
       where: { id },
-      relations: ['user', 'appointments'],
+      relations: ['user'],
     });
     if (!professional) {
       throw new NotFoundException(`Professional #${id} not found`);
@@ -34,7 +34,7 @@ export class ProfessionalsService {
   async findByUser(userId: string): Promise<Professional | null> {
     const professional = await this.professionalRepository.findOne({
       where: { userId },
-      relations: ['user', 'appointments'],
+      relations: ['user'],
     });
     return professional || null;
   }
