@@ -252,7 +252,6 @@ import { AdminModule } from './admin/admin.module';
         const username = configService.get<string>('DATABASE_USERNAME');
         const password = configService.get<string>('DATABASE_PASSWORD');
         const database = configService.get<string>('DATABASE_NAME');
-        const sslFlag = configService.get<string>('DATABASE_SSL');
 
         if (!host || !port || !username || !password || !database) {
           throw new Error(
@@ -261,10 +260,6 @@ import { AdminModule } from './admin/admin.module';
         }
 
         const isDevelopment = configService.get<string>('NODE_ENV') !== 'production';
-        const shouldUseSsl =
-          sslFlag !== undefined
-            ? ['1', 'true', 'yes', 'on'].includes(sslFlag.toLowerCase())
-            : !isDevelopment;
 
         return {
           type: 'postgres',
@@ -276,11 +271,9 @@ import { AdminModule } from './admin/admin.module';
           autoLoadEntities: true,
           synchronize: isDevelopment,
           logging: isDevelopment,
-          ssl: shouldUseSsl
-            ? {
-                rejectUnauthorized: false,
-              }
-            : false,
+          ssl: !isDevelopment ? {
+            rejectUnauthorized: false
+          } : false,
         };
       },
     }),
