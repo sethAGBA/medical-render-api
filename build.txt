@@ -1,0 +1,8 @@
+# Dans le terminal VS Code
+cd /Users/cavris/Desktop/projets/Full/medical
+flutter clean
+flutter pub get
+cd android
+./gradlew clean
+cd ..
+flutter build apk --debug
