@@ -232,6 +232,7 @@ import { HealthCentersModule } from './health-centers/health-centers.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { ChatModule } from './chat/chat.module';
 import { AdminModule } from './admin/admin.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -297,6 +298,7 @@ import { AdminModule } from './admin/admin.module';
     AppointmentsModule,
     ChatModule,
     AdminModule,
+    ChatbotModule,
   ],
 })
 export class AppModule {}
